@@ -19,8 +19,11 @@ Module.register("MMM-Radarr-Activity", {
 
         displayType: "list",
         perPage: 15,
+        pageNumber : 1,
+        sortDirection : "descending",
+        sortKey : "date",
         scrollTimeout: 10000,
-        scrollEffect: 'scrollHorz',
+        scrollEffect: 'fade',
 
         updateInterval: 5 * 60 * 1000,
 
@@ -193,9 +196,14 @@ Module.register("MMM-Radarr-Activity", {
 
     buildApiUrl: function(){
         return this.config.radarrProtocol + "://" + this.config.radarrHost + ':' + this.config.radarrPort 
-        + '/api/history?apikey=' + this.config.radarrAPIKey + '&pageSize=' + this.config.perPage;
+        + '/api/v3/history?apikey=' + this.config.radarrAPIKey + '&pageSize=' + this.config.perPage + '&page =' + this.config.pageNumber + '&sortDirection =' + this.config.sortDirection + '&sortKey =' + this.config.sortKey;
     },
 
+    
+    buildMovieIdApiUrl: function(movieId){
+        return this.config.radarrProtocol + "://" + this.config.radarrHost + ':' + this.config.radarrPort 
+        + '/api/v3/movie/' + movieId +'?apikey=' + this.config.radarrAPIKey;
+    },
 
     getLatestActivity: function(){
         if (this.config.debug) Log.info('Radarr asking for refresh of activity');
@@ -229,6 +237,7 @@ Module.register("MMM-Radarr-Activity", {
             var thisDataRecord = data.records[ record_i ];
             if( thisDataRecord.eventType != "downloadFolderImported" ) continue;
             if( this.config.debug) Log.info(thisDataRecord);
+            console.log(thisDataRecord);
             var newUpdateRecord = new this.components.models.update( this.processActivityRecord( thisDataRecord ) );
             this.models.push( newUpdateRecord );
         }
@@ -237,15 +246,19 @@ Module.register("MMM-Radarr-Activity", {
     },
 
     processActivityRecord: function(record){
-        
+        var movieRequest = new XMLHttpRequest();
+        movieRequest.open("GET", this.buildMovieIdApiUrl(record.movieId), false);
+        movieRequest.send();
+        var parsed = JSON.parse(movieRequest.response);
+
         return {
-            movieName       : record.movie.title,
-            movieYear       : record.movie.year,
-            movieDescription: record.movie.overview,
-            moviePoster     : this.getMoviePoster( record.movie.id ),
-            movieRating     : record.movie.ratings.value,
-            movieRuntime    : this.formatMovieRuntime(record.movie.runtime),
-            id              : record.id,
+            movieName       : parsed.title,
+            movieYear       : parsed.year,
+            movieDescription: parsed.overview,
+            moviePoster     : this.getMoviePoster(record.movieId),
+            movieRating     : parsed.ratings.value,
+            movieRuntime    : this.formatMovieRuntime(parsed.runtime),
+            id              : record.movieId,
             type            : record.eventType
         };
     },
@@ -267,7 +280,7 @@ Module.register("MMM-Radarr-Activity", {
 
     getMoviePoster: function(movieId){
         return this.config.radarrProtocol + "://" + this.config.radarrHost + ':' + this.config.radarrPort 
-            + '/api/MediaCover/' + movieId + '/poster-250.jpg?apikey=' + this.config.radarrAPIKey;
+            + '/api/v3/MediaCover/' + movieId + '/poster.jpg?apikey=' + this.config.radarrAPIKey;
     },
 
     // Override dom generator.
