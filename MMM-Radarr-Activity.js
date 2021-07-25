@@ -237,7 +237,6 @@ Module.register("MMM-Radarr-Activity", {
             var thisDataRecord = data.records[ record_i ];
             if( thisDataRecord.eventType != "downloadFolderImported" ) continue;
             if( this.config.debug) Log.info(thisDataRecord);
-            console.log(thisDataRecord);
             var newUpdateRecord = new this.components.models.update( this.processActivityRecord( thisDataRecord ) );
             this.models.push( newUpdateRecord );
         }
